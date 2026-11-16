@@ -1,4 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback, useDeferredValue, memo, useRef } from 'react';
+import { generateModernTitle, analyzeArtistNamingStyle } from './titleGen';
+import type { TitleMood, ArtistNamingProfile } from './titleGen';
+import { TitleMoodPicker } from './TitleMoodPicker';
+export type { TitleMood } from './titleGen';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import {
@@ -263,11 +267,7 @@ function getCompressedReach(audience: number, hitsCount = 0, catalogAvgPlays = 0
 // CATALOG-ANALYZING CONTEMPORARY TITLE GENERATOR (PURE RU OR PURE EN — NO MIX)
 // ============================================================================
 
-interface ArtistNamingProfile {
-  enProb: number; // 0..1 probability that a track by this artist is pure English vs pure Russian
-  casingWeights: { normal: number; lower: number; upper: number; title: number };
-  shortRatio: number;
-}
+// ArtistNamingProfile now lives in ./titleGen
 
 // Pure Russian & pure English pools — ZERO cross-script characters inside a single entry!
 const ONE_WORD_PUNCH_RU = [
@@ -411,7 +411,7 @@ const SNIPPET_TEASERS = [
   'Кусочек куплета без анонса — аудитория активно строит теории о возможном фите.'
 ];
 
-export type TitleMood = 'all' | 'fashion' | 'absurd' | 'conceptual' | 'sad' | 'rap' | 'trap' | 'status' | 'relations' | 'body_dark' | 'vibe' | 'numbers' | 'cars_weapons' | 'mystic' | 'aesthetics';
+// TitleMood now lives in ./titleGen (re-exported at the top of this file)
 
 const ABSURD_RU = ['Утка в кроссовках', 'Сломанный утюг', 'Медведь на рейве', 'Пластиковый дождь', 'Космический бомж', 'Сырный замок', 'Летающий тапочек', 'Зелёный слон'];
 const ABSURD_EN = ['Plastic Duck', 'Broken Toaster', 'Raving Bear', 'Cosmic Hobo', 'Cheese Castle', 'Flying Slipper', 'Neon Garbage'];
@@ -544,108 +544,7 @@ function applyNaturalCasing(str: string, casingWeights: { normal: number; lower:
   return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
 
-function analyzeArtistNamingStyle(artist: any, tracks: Track[], albums: Album[]): ArtistNamingProfile {
-  return {
-    enProb: 0.65,
-    casingWeights: { normal: 0.4, lower: 0.3, upper: 0.2, title: 0.1 },
-    shortRatio: 0.4
-  };
-}
-
-
-export function generateModernTitle(
-  existingSet: Set<string>,
-  isAlbum: boolean,
-  profileOrEnglish: ArtistNamingProfile | boolean,
-  languageOverride: SimLanguageMix = 'auto',
-  moodTheme: TitleMood = 'all'
-): string {
-  const profile: ArtistNamingProfile =
-    typeof profileOrEnglish === 'boolean'
-      ? {
-          enProb: profileOrEnglish ? 0.76 : 0.34,
-          casingWeights: { normal: 0.36, lower: 0.30, upper: 0.24, title: 0.10 },
-          shortRatio: 0.4
-        }
-      : profileOrEnglish;
-
-  const chooseLangMode = (): 'ru' | 'en' => {
-    if (languageOverride === 'en') return 'en';
-    if (languageOverride === 'ru') return 'ru';
-    if (languageOverride === 'mix') return Math.random() < 0.5 ? 'en' : 'ru';
-    return Math.random() < profile.enProb ? 'en' : 'ru';
-  };
-
-  const getMoodPool = (lang: 'ru' | 'en'): string[] => {
-    switch (moodTheme) {
-      case 'fashion':
-        return lang === 'en' ? FASHION_LUXURY_EN : FASHION_LUXURY_RU;
-      case 'absurd':
-        return lang === 'en' ? ABSURD_EN : ABSURD_RU;
-      case 'conceptual':
-        return lang === 'en' ? CONCEPTUAL_EN : CONCEPTUAL_RU;
-      case 'sad':
-        return lang === 'en' ? SAD_EN : SAD_RU;
-      case 'rap':
-        return lang === 'en' ? RAP_EN : RAP_RU;
-      case 'trap':
-        return lang === 'en' ? TRAP_EN : TRAP_RU;
-      case 'status':
-        return lang === 'en' ? STATUS_MONEY_EN : STATUS_MONEY_RU;
-      case 'relations':
-        return lang === 'en' ? RELATIONS_EN : RELATIONS_RU;
-      case 'vibe':
-        return lang === 'en' ? VIBE_MOOD_EN : VIBE_MOOD_RU;
-      case 'numbers':
-        return lang === 'en' ? NUMBERS_TITLES_EN : NUMBERS_TITLES_RU;
-      case 'cars_weapons':
-        return lang === 'en' ? CARS_WEAPONS_ICONS_EN : CARS_WEAPONS_ICONS_RU;
-      case 'body_dark':
-        return lang === 'en' ? BODY_DARK_EN : BODY_DARK_RU;
-      case 'mystic':
-        return lang === 'en' ? MYSTIC_LONG_EN : MYSTIC_LONG_RU;
-      case 'aesthetics':
-        return lang === 'en' ? FASHION_AESTHETICS_EN : FASHION_AESTHETICS_RU;
-      default:
-        return [];
-    }
-  };
-
-  for (let i = 0; i < 40; i++) {
-    const langMode = chooseLangMode();
-    let raw = '';
-    const pool = getMoodPool(langMode);
-    if (moodTheme !== 'all' && pool.length > 0) {
-      raw = pickFrom(pool);
-      if (Math.random() < 0.35 && moodTheme === 'fashion') {
-        raw = `${raw} ${pickFrom(langMode === 'en' ? ['type', 'boots', 'glasses', 'session'] : ['тип', 'модель', 'стиль', 'сессия'])}`;
-      }
-    } else {
-      raw = buildDynamicPatternTitle(langMode, isAlbum);
-    }
-    if (hasMixedScripts(raw)) continue;
-    const formatted = applyNaturalCasing(raw, profile.casingWeights, true);
-    if (!existingSet.has(formatted.toLowerCase())) {
-      existingSet.add(formatted.toLowerCase());
-      return formatted;
-    }
-  }
-
-  const langMode = chooseLangMode();
-  const pool = getMoodPool(langMode);
-  const base = moodTheme !== 'all' && pool.length > 0 ? pickFrom(pool) : buildDynamicPatternTitle(langMode, isAlbum);
-  const tags =
-    langMode === 'en'
-      ? isAlbum
-        ? ['(Deluxe)', 'Vol. 2', '25', 'Archive']
-        : ['Pt. 2', 'v2', '(Freestyle)', '(Live)', 'x2']
-      : isAlbum
-        ? ['(Делюкс)', 'Глава 2', '25', 'Архив']
-        : ['ч. 2', 'версия 2', '(Фристайл)', '(Демо)', 'х2'];
-  const tagged = applyNaturalCasing(`${base} ${pickFrom(tags)}`, profile.casingWeights);
-  existingSet.add(tagged.toLowerCase());
-  return tagged;
-}
+// analyzeArtistNamingStyle / generateModernTitle now live in ./titleGen (v2 generator)
 
 // ============================================================================
 // FAST O(N + M) CATALOG INDEX & ANALYTICS ENGINE
@@ -5390,7 +5289,7 @@ const SimIdeaStudioModal: React.FC<{
   };
 
   const handleRegenerateTitles = (mood?: TitleMood) => {
-    const targetMood = mood !== undefined ? mood : titleMood;
+    const targetMood = typeof mood === 'string' ? mood : titleMood;
     const ideas = buildFourTitleIdeas(selectedMetrics, releaseFormat, targetMood);
     setTitleSuggestions(ideas);
     if (ideas[0]) setDraftTitle(ideas[0]);
@@ -6222,43 +6121,6 @@ const SimIdeaStudioModal: React.FC<{
                       </button>
                     </div>
 
-                    {/* Mood / Theme Selector for Titles */}
-                    <div className="flex flex-wrap items-center gap-1 p-1 bg-black/40 rounded-xl border border-white/10 text-[11px] overflow-x-auto">
-                      {[
-                        { id: 'all', label: '🌐 Любые' },
-                        { id: 'fashion', label: '💎 Фэшн' },
-                        { id: 'absurd', label: '🤡 Абсурдный' },
-                        { id: 'conceptual', label: '🧠 Концептуальный' },
-                        { id: 'sad', label: '🌧 Грустный' },
-                        { id: 'rap', label: '🎤 Рэп' },
-                        { id: 'trap', label: '⚡ Трэп' },
-                        { id: 'status', label: '💰 Деньги' },
-                        { id: 'relations', label: '💔 Отношения' },
-                        { id: 'body_dark', label: '🩸 Боль' },
-                        { id: 'vibe', label: '✨ Радость / Вайб' },
-                        { id: 'numbers', label: '🔢 Цифры' },
-                        { id: 'cars_weapons', label: '🏎 Тачки' },
-                        { id: 'mystic', label: '🔮 Мистика' },
-                        { id: 'aesthetics', label: '🌆 Эстетика' }
-                      ].map(mOpt => (
-                        <button
-                          key={mOpt.id}
-                          type="button"
-                          onClick={() => {
-                            const nextMood = mOpt.id as TitleMood;
-                            setTitleMood(nextMood);
-                            handleRegenerateTitles(nextMood);
-                          }}
-                          className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                            titleMood === mOpt.id
-                              ? 'theme-bg-accent text-black font-bold shadow'
-                              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                          }`}
-                        >
-                          {mOpt.label}
-                        </button>
-                      ))}
-                    </div>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -6267,9 +6129,16 @@ const SimIdeaStudioModal: React.FC<{
                         placeholder="Введите или выберите вариант ниже..."
                         className="flex-1 bg-black/45 border border-white/12 focus:border-white/30 rounded-2xl px-4 py-2.5 text-xs font-bold text-white outline-none"
                       />
+                      <TitleMoodPicker
+                        value={titleMood}
+                        onChange={nextMood => {
+                          setTitleMood(nextMood);
+                          handleRegenerateTitles(nextMood);
+                        }}
+                      />
                       <button
                         type="button"
-                        onClick={handleRegenerateTitles}
+                        onClick={() => handleRegenerateTitles()}
                         className="px-3.5 py-2.5 rounded-2xl bg-white/[0.07] hover:bg-white/[0.14] border border-white/10 cursor-pointer"
                         title="Сгенерировать новое название"
                       >
@@ -7437,14 +7306,15 @@ const SimManualTab = memo(({
     }
   };
 
-  const handleGenerateRandomTitle = () => {
+  const handleGenerateRandomTitle = (moodArg?: TitleMood) => {
+    const moodToUse: TitleMood = typeof moodArg === 'string' ? moodArg : manualTitleMood;
     const existing = new Set<string>([
       ...simState.tracks.map(t => t.title.toLowerCase()),
       ...simState.albums.map(a => a.title.toLowerCase()),
       ...manualQueue.map(q => q.title.toLowerCase())
     ]);
     const namingProf = selectedArtMetrics?.namingProfile ?? false;
-    const generated = generateModernTitle(existing, manualItemType === 'album', namingProf, autopilot.languageMix, manualTitleMood);
+    const generated = generateModernTitle(existing, manualItemType === 'album', namingProf, autopilot.languageMix, moodToUse);
     setManualTitle(generated);
   };
 
@@ -7934,7 +7804,7 @@ const SimManualTab = memo(({
                   </label>
                   <button
                     type="button"
-                    onClick={handleGenerateRandomTitle}
+                    onClick={() => handleGenerateRandomTitle()}
                     className="text-[11px] font-bold theme-accent hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Dices className="w-3 h-3" />
@@ -7942,35 +7812,6 @@ const SimManualTab = memo(({
                   </button>
                 </div>
 
-                {/* Mood / Vibe Selector for Manual Batcher */}
-                <div className="flex flex-wrap items-center gap-1 p-1 bg-black/40 rounded-xl border border-white/10 text-[10px] overflow-x-auto">
-                  {[
-                    { id: 'all', label: '🌐 Любые' },
-                    { id: 'fashion', label: '💎 Фэшн' },
-                    { id: 'absurd', label: '🤡 Абсурдный' },
-                    { id: 'conceptual', label: '🧠 Концепт' },
-                    { id: 'sad', label: '🌧 Грустный' },
-                    { id: 'rap', label: '🎤 Рэп' },
-                    { id: 'trap', label: '⚡ Трэп' },
-                    { id: 'status', label: '💰 Деньги' },
-                    { id: 'relations', label: '💔 Отношения' },
-                    { id: 'body_dark', label: '🩸 Боль' },
-                    { id: 'vibe', label: '✨ Вайб' }
-                  ].map(mOpt => (
-                    <button
-                      key={mOpt.id}
-                      type="button"
-                      onClick={() => setManualTitleMood(mOpt.id as TitleMood)}
-                      className={`px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                        manualTitleMood === mOpt.id
-                          ? 'theme-bg-accent text-black font-bold shadow'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      {mOpt.label}
-                    </button>
-                  ))}
-                </div>
 
                 <div className="flex gap-1.5">
                   <input
@@ -7980,9 +7821,16 @@ const SimManualTab = memo(({
                     onChange={e => setManualTitle(e.target.value)}
                     className="flex-1 min-w-0 bg-black/40 border border-white/12 focus:border-white/30 rounded-2xl px-4 py-2.5 text-xs font-bold text-white outline-none"
                   />
+                  <TitleMoodPicker
+                    value={manualTitleMood}
+                    onChange={nextMood => {
+                      setManualTitleMood(nextMood);
+                      handleGenerateRandomTitle(nextMood);
+                    }}
+                  />
                   <button
                     type="button"
-                    onClick={handleGenerateRandomTitle}
+                    onClick={() => handleGenerateRandomTitle()}
                     className="px-3.5 py-2.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.14] border border-white/10 text-zinc-200 hover:text-white cursor-pointer shrink-0"
                     title="Сгенерировать название"
                   >
