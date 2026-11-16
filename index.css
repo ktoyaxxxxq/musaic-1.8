@@ -1,0 +1,83 @@
+/* Musaic Global Styles & Ultra-Smooth Animations */
+:root {
+  --anim-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --anim-ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --anim-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --anim-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Ensure smooth animations with zero frame drop */
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+/* Fluid hardware-accelerated transitions */
+.transition-smooth {
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.transition-lift {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
+              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
+              border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.04s;
+  will-change: transform;
+}
+
+.transition-lift:hover {
+  transform: translateY(-3px);
+}
+
+/* Direct-hover-only smooth text underline with gentle delay (no abrupt flash on cursor pass) */
+.hover-text-link {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  text-decoration-color: transparent;
+  transition: color 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.045s,
+              text-decoration-color 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.045s,
+              opacity 0.28s ease 0.045s;
+}
+
+.hover-text-link:hover {
+  color: #ffffff;
+  text-decoration-color: currentColor;
+}
+
+/* Smooth delayed border outline highlight for cards */
+.hover-outline-card {
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.045s,
+              border-color 0.34s cubic-bezier(0.22, 1, 0.36, 1) 0.045s,
+              background-color 0.34s cubic-bezier(0.22, 1, 0.36, 1) 0.045s,
+              box-shadow 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.045s;
+}
+
+.hover-outline-card:hover {
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 16px 38px -12px rgba(0, 0, 0, 0.58);
+}
+
+/* Smooth delayed border outline highlight for list rows */
+.hover-outline-row {
+  transition: border-color 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
+              background-color 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
+              box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
+              transform 0.28s cubic-bezier(0.22, 1, 0.36, 1) 0.04s;
+}
+
+.hover-outline-row:hover {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  background-color: rgba(255, 255, 255, 0.065) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Smooth delayed subtle outline for interactive avatar & media frames */
+.hover-outline-media {
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.045s,
+              border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.045s,
+              box-shadow 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.045s;
+}
+
+.hover-outline-media:hover {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
